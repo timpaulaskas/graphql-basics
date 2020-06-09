@@ -1,4 +1,5 @@
 import { GraphQLServer } from 'graphql-yoga'
+import {v4 as uuidv4} from 'uuid'
 
 // Scalar Types
 // String, Boolean, Int, Float, ID
@@ -74,6 +75,31 @@ const typeDefs = `
         post: Post!
     }
 
+    type Mutation {
+        createUser(data: CreateUserInput!): User!
+        createPost(data: CreatePostInput!): Post!
+        createComment(data: CreateCommentInput!): Comment!
+    }
+
+    input CreateUserInput {
+        name: String!
+        email: String!
+        age: Int
+    }
+
+    input CreatePostInput {
+        title: String!
+        body: String!
+        published: Boolean!
+        author: ID!
+    }
+
+    input CreateCommentInput {
+        text: String!
+        author: ID!
+        post: ID!
+    }
+
     type User {
         id: ID!
         name: String!
@@ -136,6 +162,46 @@ const resolvers = {
                 body: 'Content of the post',
                 published: false
             }
+        }
+    },
+    Mutation: {
+        createUser(parent, args, ctx, info) {
+            const emailTaken = users.some((user) => user.email === args.data.email)
+            if (emailTaken) throw new Error('Email is already in use')
+
+            const user = {
+                id: uuidv4(),
+                ...args.data
+            }
+
+            users.push(user)
+            return user
+        },
+        createPost(parent, args, ctx, info) {
+            const userExists = users.some((user) => user.id === args.data.author)
+            if (!userExists) throw new Error('Author not found')
+
+            const post = {
+                id: uuidv4(),
+                ...args.data
+            }
+
+            posts.push(post)
+            return post
+        },
+        createComment(parent, args, ctx, info) {
+            const userExists = users.some((user) => user.id === args.data.author)
+            if (!userExists) throw new Error('Author not found')
+
+            const postExists = posts.some((post) => post.published && post.id === args.data.post)
+            if (!postExists) throw new Error('Post not published or not found')
+
+            const comment = {
+                id: uuidv4(),
+                ...args.data
+            }
+            comments.push(comment)
+            return comment
         }
     },
     Post: {
